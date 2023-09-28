@@ -39,6 +39,8 @@ using namespace veins;
 
 #include <veins/modules/application/f2md/mdSupport/VarThrePrintable.h>
 #include <veins/modules/application/f2md/mdSupport/XmlWriter.h>
+#include <veins/modules/application/f2md/mdSupport/MlTypeRetriever.h>
+#include <veins/modules/application/f2md/mdSupport/CheckTypePutter.h>
 
 #include <veins/modules/application/f2md/mdReport/OneMessageReport.h>
 #include <veins/modules/application/f2md/mdReport/EvidenceReport.h>
@@ -134,11 +136,11 @@ protected:
     virtual void handleSelfMessage(cMessage* msg);
     virtual void handlePositionUpdate(cObject* obj);
 
+    virtual std::string getSavePathAdd(std::string checkType, int appType);
     virtual void populateBSM(BasicSafetyMessage* bsm);
 
     mbTypes::Mbs induceMisbehavior(double localAttacker, double globalAttacker);
     void LocalMisbehaviorDetection(BasicSafetyMessage* bsm, int version);
-
     void writeReport(MDReport reportBase,int version,std::string maversion,
             BsmCheck bsmCheck, BasicSafetyMessage *bsm);
 
@@ -173,8 +175,8 @@ protected:
     ThresholdApp ThreV1 = ThresholdApp(1, 0.28125);
     ThresholdApp ThreV2 = ThresholdApp(2, 0.28125);
 
-    AggrigationApp AggrV1 = AggrigationApp(1, 0.28125,0.5, 10.0, 3);
-    AggrigationApp AggrV2 = AggrigationApp(2, 0.28125,0.5, 10.0, 3);
+    AggregationApp AggrV1 = AggregationApp(1, 0.28125,0.5, 10.0, 3);
+    AggregationApp AggrV2 = AggregationApp(2, 0.28125,0.5, 10.0, 3);
 
     BehavioralApp BehaV1 = BehavioralApp(1, 0.5);
     BehavioralApp BehaV2 = BehavioralApp(2, 0.5);
@@ -184,6 +186,11 @@ protected:
 
     MachineLearningApp PybgV1 = MachineLearningApp(1, mlPortV1, mlHostV1);
     MachineLearningApp PybgV2 = MachineLearningApp(2, mlPortV2, mlHostV2);
+
+
+    MlTypeRetriever mlTypeRetriever = MlTypeRetriever(1, mlPortV1, mlHostV1);
+    CheckTypePutter checkTypePutter = CheckTypePutter(1, mlPortV1, mlHostV1);
+
 
     ProtocolEnforcer reportProtocolEnforcerV1 = ProtocolEnforcer();
     ProtocolEnforcer reportProtocolEnforcerV2 = ProtocolEnforcer();

@@ -13,6 +13,26 @@
 
 Define_Module(JosephVeinsMode4);
 
+std::string JosephVeinsMode4::getSavePathAdd(std::string checkType, int appType)
+{
+    std::string add = "";
+    int stripCheckStart = checkType.length() - 6;
+    std::string strippedCheckType = checkType.replace(stripCheckStart, 6, "");
+    add = add + checkType;
+    if (appType == 5) {
+        std::string mlType = mlTypeRetriever.GetMlType();
+        add = add + "_" + mlType;
+    }
+    else {
+        std::string appSType = mdAppTypes::AppNames[appType];
+        int stripAppStart = appSType.length() - 3;
+        std::string strippedAppType = appSType.replace(stripAppStart, 3, "");
+        add = add + "_" + strippedAppType;
+    }
+    add = add + "/";
+    return add;
+}
+
 void JosephVeinsMode4::initialize(int stage) {
 
     F2MDBaseMode4Layer::initialize(stage);
@@ -70,8 +90,14 @@ void JosephVeinsMode4::initialize(int stage) {
         params.checksVersionV2 = mdChecksVersionTypes::intChecksVersion[par(
                 "checksVersionV2").intValue()];
 
-        params.appTypeV1 = mdAppTypes::intApp[par("appTypeV1").intValue()];
+        int appTypeV1 = par("appTypeV1").intValue();
+        params.appTypeV1 = mdAppTypes::intApp[appTypeV1];
         params.appTypeV2 = mdAppTypes::intApp[par("appTypeV2").intValue()];
+
+        std::string checkNameV1 = mdChecksVersionTypes::ChecksVersionNames[par("checksVersionV1").intValue()];
+        params.savePathAdd = getSavePathAdd(checkNameV1, appTypeV1);
+
+        checkTypePutter.PutCheckType(checkNameV1);
 
         params.writeSelfMsg = par("writeSelfMsg");
         params.writeListSelfMsg = par("writeListSelfMsg");
@@ -466,7 +492,7 @@ void JosephVeinsMode4::initialize(int stage) {
         }
 
         if (params.writeVeReMi) {
-            VeReMi.initVeReMiPrintable(params.savePath, params.serialNumber,
+            VeReMi.initVeReMiPrintable(params.savePath, params.savePathAdd, params.serialNumber,
                     myId, getParentModule()->getId(), myAttackType, curDate,
                     params.VeReMiSliceTime, VeReMiSliceStartTime,
                     simTime().dbl());
@@ -494,7 +520,7 @@ void JosephVeinsMode4::setMDApp(mdAppTypes::App appTypeV1,
     case mdAppTypes::ThresholdApp:
         AppV1 = &ThreV1;
         break;
-    case mdAppTypes::AggrigationApp:
+    case mdAppTypes::AggregationApp:
         AppV1 = &AggrV1;
         break;
     case mdAppTypes::BehavioralApp:
@@ -518,7 +544,7 @@ void JosephVeinsMode4::setMDApp(mdAppTypes::App appTypeV1,
     case mdAppTypes::ThresholdApp:
         AppV2 = &ThreV2;
         break;
-    case mdAppTypes::AggrigationApp:
+    case mdAppTypes::AggregationApp:
         AppV2 = &AggrV2;
         break;
     case mdAppTypes::BehavioralApp:
@@ -795,14 +821,14 @@ void JosephVeinsMode4::LocalMisbehaviorDetection(BasicSafetyMessage *bsm,
 
             if ((simTime().dbl() > params.START_SAVE) && params.SaveStatsV1) {
 
-                AppV1->saveLine(params.savePath, params.serialNumber,
+                AppV1->saveLine(params.savePath, params.savePathAdd, params.serialNumber,
                         mobility->getManager()->getManagedHosts().size(),
                         deltaTV1, printOut);
 
-                mdStats.saveLine(params.savePath, params.serialNumber, deltaTV1,
+                mdStats.saveLine(params.savePath, params.savePathAdd, params.serialNumber, deltaTV1,
                         printOut);
                 if (params.enableVarThreV1) {
-                    varThrePrintableV1.saveFile(params.savePath,
+                    varThrePrintableV1.saveFile(params.savePath, params.savePathAdd,
                             params.serialNumber, printOut);
                 }
 
@@ -949,14 +975,14 @@ void JosephVeinsMode4::LocalMisbehaviorDetection(BasicSafetyMessage *bsm,
             deltaTV2 = simTime().dbl();
 
             if ((simTime().dbl() > params.START_SAVE) && params.SaveStatsV2) {
-                AppV2->saveLine(params.savePath, params.serialNumber,
+                AppV2->saveLine(params.savePath, params.savePathAdd, params.serialNumber,
                         mobility->getManager()->getManagedHosts().size(),
                         deltaTV2, printOut);
 
-                mdStats.saveLine(params.savePath, params.serialNumber, deltaTV2,
+                mdStats.saveLine(params.savePath, params.savePathAdd, params.serialNumber, deltaTV2,
                         printOut);
                 if (params.enableVarThreV2) {
-                    varThrePrintableV2.saveFile(params.savePath,
+                    varThrePrintableV2.saveFile(params.savePath, params.savePathAdd,
                             params.serialNumber, printOut);
                 }
 
@@ -983,7 +1009,7 @@ void JosephVeinsMode4::writeReport(MDReport reportBase, int version,
     case reportTypes::BasicCheckReport: {
         BasicCheckReport bcr = BasicCheckReport(reportBase);
         bcr.setReportedCheck(bsmCheck);
-        bcr.writeStrToFile(params.savePath, params.serialNumber, maversion,
+        bcr.writeStrToFile(params.savePath, params.savePathAdd, params.serialNumber, maversion,
                 bcr.getReportPrintableJson(), curDate);
     }
         break;
@@ -992,7 +1018,7 @@ void JosephVeinsMode4::writeReport(MDReport reportBase, int version,
         OneMessageReport omr = OneMessageReport(reportBase);
         omr.setReportedBsm(*bsm);
         omr.setReportedCheck(bsmCheck);
-        omr.writeStrToFile(params.savePath, params.serialNumber, maversion,
+        omr.writeStrToFile(params.savePath, params.savePathAdd, params.serialNumber, maversion,
                 omr.getReportPrintableJson(), curDate);
     }
         break;
@@ -1000,13 +1026,13 @@ void JosephVeinsMode4::writeReport(MDReport reportBase, int version,
         EvidenceReport evr = EvidenceReport(reportBase);
         if (myBsmNum > 0) {
             evr.addEvidence(myBsm[0], bsmCheck, *bsm, &detectedNodes);
-            evr.writeStrToFile(params.savePath, params.serialNumber, maversion,
+            evr.writeStrToFile(params.savePath, params.savePathAdd, params.serialNumber, maversion,
                     evr.getReportPrintableJson(), curDate);
         } else {
             OneMessageReport omr = OneMessageReport(reportBase);
             omr.setReportedBsm(*bsm);
             omr.setReportedCheck(bsmCheck);
-            omr.writeStrToFile(params.savePath, params.serialNumber, maversion,
+            omr.writeStrToFile(params.savePath, params.savePathAdd, params.serialNumber, maversion,
                     omr.getReportPrintableJson(), curDate);
         }
     }
@@ -1029,7 +1055,7 @@ void JosephVeinsMode4::writeReport(MDReport reportBase, int version,
             ProtocolReport hir = ProtocolReport(reportBase);
             hir.addEvidence(myBsm[0], bsmCheck, *bsm, &detectedNodes,
                     simTime().dbl(), params.InitialHistory, version);
-            hir.writeStrToFile(params.savePath, params.serialNumber, maversion,
+            hir.writeStrToFile(params.savePath, params.savePathAdd, params.serialNumber, maversion,
                     hir.getReportPrintableJson(), curDate);
         }
     }
@@ -1046,7 +1072,7 @@ void JosephVeinsMode4::writeListReport(MDReport reportBase, int version,
     case reportTypes::BasicCheckReport: {
         BasicCheckReport bcr = BasicCheckReport(reportBase);
         bcr.setReportedCheck(bsmCheck);
-        bcr.writeStrToFileList(params.savePath, params.serialNumber, maversion,
+        bcr.writeStrToFileList(params.savePath, params.savePathAdd, params.serialNumber, maversion,
                 bcr.getReportPrintableJson(), curDate);
     }
         break;
@@ -1055,7 +1081,7 @@ void JosephVeinsMode4::writeListReport(MDReport reportBase, int version,
         OneMessageReport omr = OneMessageReport(reportBase);
         omr.setReportedBsm(*bsm);
         omr.setReportedCheck(bsmCheck);
-        omr.writeStrToFileList(params.savePath, params.serialNumber, maversion,
+        omr.writeStrToFileList(params.savePath, params.savePathAdd, params.serialNumber, maversion,
                 omr.getReportPrintableJson(), curDate);
     }
         break;
@@ -1063,13 +1089,13 @@ void JosephVeinsMode4::writeListReport(MDReport reportBase, int version,
         EvidenceReport evr = EvidenceReport(reportBase);
         if (myBsmNum > 0) {
             evr.addEvidence(myBsm[0], bsmCheck, *bsm, &detectedNodes);
-            evr.writeStrToFileList(params.savePath, params.serialNumber,
+            evr.writeStrToFileList(params.savePath, params.savePathAdd, params.serialNumber,
                     maversion, evr.getReportPrintableJson(), curDate);
         } else {
             OneMessageReport omr = OneMessageReport(reportBase);
             omr.setReportedBsm(*bsm);
             omr.setReportedCheck(bsmCheck);
-            omr.writeStrToFileList(params.savePath, params.serialNumber,
+            omr.writeStrToFileList(params.savePath, params.savePathAdd, params.serialNumber,
                     maversion, omr.getReportPrintableJson(), curDate);
         }
     }
@@ -1091,7 +1117,7 @@ void JosephVeinsMode4::writeListReport(MDReport reportBase, int version,
             ProtocolReport hir = ProtocolReport(reportBase);
             hir.addEvidence(myBsm[0], bsmCheck, *bsm, &detectedNodes,
                     simTime().dbl(), params.InitialHistory, version);
-            hir.writeStrToFileList(params.savePath, params.serialNumber,
+            hir.writeStrToFileList(params.savePath, params.savePathAdd, params.serialNumber,
                     maversion, hir.getReportPrintableJson(), curDate);
         }
     }
@@ -1173,12 +1199,12 @@ void JosephVeinsMode4::sendReport(MDReport reportBase, int version,
 
     if (!maversion.compare("V1")) {
         HTTPRequest httpr = HTTPRequest(params.maPortV1, params.maHostV1);
-        std::string response = httpr.Request(reportStr);
+        std::string response = httpr.Request(reportStr, "POST");
     }
 
     if (!maversion.compare("V2")) {
         HTTPRequest httpr = HTTPRequest(params.maPortV2, params.maHostV2);
-        std::string response = httpr.Request(reportStr);
+        std::string response = httpr.Request(reportStr, "POST");
     }
 
 }
@@ -1190,7 +1216,7 @@ void JosephVeinsMode4::writeMdBsm(std::string version, BsmCheck bsmCheck,
     bsmPrint.setReceiverPseudo(myPseudonym);
     bsmPrint.setBsm(*bsm);
     bsmPrint.setBsmCheck(bsmCheck);
-    bsmPrint.writeStrToFile(params.savePath, params.serialNumber, version,
+    bsmPrint.writeStrToFile(params.savePath, params.savePathAdd, params.serialNumber, version,
             bsmPrint.getBsmPrintableJson(), curDate);
 }
 
@@ -1201,7 +1227,7 @@ void JosephVeinsMode4::writeMdListBsm(std::string version, BsmCheck bsmCheck,
     bsmPrint.setReceiverPseudo(myPseudonym);
     bsmPrint.setBsm(*bsm);
     bsmPrint.setBsmCheck(bsmCheck);
-    bsmPrint.writeStrToFileList(params.savePath, params.serialNumber, version,
+    bsmPrint.writeStrToFileList(params.savePath, params.savePathAdd, params.serialNumber, version,
             bsmPrint.getBsmPrintableJson(), curDate);
 }
 
@@ -1210,7 +1236,7 @@ void JosephVeinsMode4::writeSelfBsm(BasicSafetyMessage bsm) {
     bsmPrint.setReceiverId(myId);
     bsmPrint.setReceiverPseudo(myPseudonym);
     bsmPrint.setBsm(bsm);
-    bsmPrint.writeSelfStrToFile(params.savePath, params.serialNumber,
+    bsmPrint.writeSelfStrToFile(params.savePath, params.savePathAdd, params.serialNumber,
             bsmPrint.getSelfBsmPrintableJson(myVType), curDate);
 }
 
@@ -1219,7 +1245,7 @@ void JosephVeinsMode4::writeSelfListBsm(BasicSafetyMessage bsm) {
     bsmPrint.setReceiverId(myId);
     bsmPrint.setReceiverPseudo(myPseudonym);
     bsmPrint.setBsm(bsm);
-    bsmPrint.writeSelfStrToFileList(params.savePath, params.serialNumber,
+    bsmPrint.writeSelfStrToFileList(params.savePath, params.savePathAdd, params.serialNumber,
             bsmPrint.getSelfBsmPrintableJson(myVType), curDate);
 }
 
@@ -1233,13 +1259,13 @@ void JosephVeinsMode4::handleSelfMessage(cMessage *msg) {
         std::string reportStr = "curTime:";
         reportStr.append(std::to_string(simTime().dbl()));
         HTTPRequest httpr = HTTPRequest(params.maPortV1, params.maHostV1);
-        std::string response = httpr.Request(reportStr);
+        std::string response = httpr.Request(reportStr, "POST");
     }
     if (params.sendReportsV2) {
         std::string reportStr = "curTime:";
         reportStr.append(std::to_string(simTime().dbl()));
         HTTPRequest httpr = HTTPRequest(params.maPortV2, params.maHostV2);
-        std::string response = httpr.Request(reportStr);
+        std::string response = httpr.Request(reportStr, "POST");
     }
 
     if (params.writeSelfMsg) {
@@ -1309,12 +1335,12 @@ void JosephVeinsMode4::handleReportProtocol(bool lastTimeStep) {
                         params.CollectionPeriod, 1);
 
                 if (params.writeReportsV1 && myBsmNum > 0) {
-                    hir.writeStrToFile(params.savePath, params.serialNumber,
+                    hir.writeStrToFile(params.savePath, params.savePathAdd, params.serialNumber,
                             "V1", hir.getReportPrintableJson(), curDate);
                 }
 
                 if (params.writeListReportsV1 && myBsmNum > 0) {
-                    hir.writeStrToFileList(params.savePath, params.serialNumber,
+                    hir.writeStrToFileList(params.savePath, params.savePathAdd, params.serialNumber,
                             "V1", hir.getReportPrintableJson(), curDate);
                 }
 
@@ -1322,7 +1348,7 @@ void JosephVeinsMode4::handleReportProtocol(bool lastTimeStep) {
                     HTTPRequest httpr = HTTPRequest(params.maPortV1,
                             params.maHostV1);
                     std::string response = httpr.Request(
-                            hir.getReportPrintableJson());
+                            hir.getReportPrintableJson(), "POST");
                 }
             } else {
                 reportProtocolEnforcerV1.removeReportedPseudo(pseudosList[var]);
@@ -1380,12 +1406,12 @@ void JosephVeinsMode4::handleReportProtocol(bool lastTimeStep) {
                         params.CollectionPeriod, 2);
 
                 if (params.writeReportsV2 && myBsmNum > 0) {
-                    hir.writeStrToFile(params.savePath, params.serialNumber,
+                    hir.writeStrToFile(params.savePath, params.savePathAdd, params.serialNumber,
                             "V2", hir.getReportPrintableJson(), curDate);
                 }
 
                 if (params.writeListReportsV2 && myBsmNum > 0) {
-                    hir.writeStrToFileList(params.savePath, params.serialNumber,
+                    hir.writeStrToFileList(params.savePath, params.savePathAdd, params.serialNumber,
                             "V2", hir.getReportPrintableJson(), curDate);
                 }
 
@@ -1393,7 +1419,7 @@ void JosephVeinsMode4::handleReportProtocol(bool lastTimeStep) {
                     HTTPRequest httpr = HTTPRequest(params.maPortV2,
                             params.maHostV2);
                     std::string response = httpr.Request(
-                            hir.getReportPrintableJson());
+                            hir.getReportPrintableJson(), "POST");
                 }
             } else {
                 reportProtocolEnforcerV2.removeReportedPseudo(pseudosList[var]);
