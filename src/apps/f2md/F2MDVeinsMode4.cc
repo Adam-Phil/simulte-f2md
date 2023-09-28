@@ -21,15 +21,15 @@ std::string JosephVeinsMode4::getSavePathAdd(std::string checkType, int appType)
     add = add + checkType;
     if (appType == 5) {
         std::string mlType = mlTypeRetriever.GetMlType();
-        add = add + "_" + mlType;
+        add = add + "-" + mlType;
     }
     else {
         std::string appSType = mdAppTypes::AppNames[appType];
         int stripAppStart = appSType.length() - 3;
         std::string strippedAppType = appSType.replace(stripAppStart, 3, "");
-        add = add + "_" + strippedAppType;
+        add = add + "-" + strippedAppType;
     }
-    add = add + "/";
+    add = add + "-";
     return add;
 }
 
